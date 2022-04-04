@@ -12,7 +12,9 @@ fun commandByName(name: CommandName): Command =
 
 private val commands = mapOf(
     "cat".toCn() to Cat,
+    "cd".toCn() to Cd,
     "echo".toCn() to Echo,
+    "ls".toCn() to Ls,
     "pwd".toCn() to Pwd,
     "wc".toCn() to Wc
 )

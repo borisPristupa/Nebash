@@ -4,8 +4,13 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import ru.itmo.sd.nebash.*
+import ru.itmo.sd.nebash.runtime.commands.HOME_VN
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.io.path.name
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+import kotlin.streams.toList
 
 class ExecuteTest {
 
@@ -85,6 +90,57 @@ class ExecuteTest {
     @Test
     fun pwd() {
         PipelineStmt(pipeline = listOf(PipelineAtom("pwd".toCn()))).execute(MutableState())
+    }
+
+    @Test
+    fun cd() {
+        fun userDir() = Path.of(System.getProperty("user.dir")).toAbsolutePath()
+
+        fun execCd(destination: String?, home: Path? = null) {
+            val args = destination?.let { listOf(it.ca) } ?: emptyList()
+            val env = home?.let { MutableState(HOME_VN to home.toString().vv) } ?: MutableState()
+            env.export(HOME_VN)
+            PipelineStmt(pipeline = listOf(PipelineAtom("cd".toCn(), args))).execute(env)
+        }
+
+        val oldUserDir = userDir()
+        execCd(".")
+        assertEquals(oldUserDir, userDir())
+
+        execCd("..")
+        assertEquals(oldUserDir.parent.toAbsolutePath(), userDir())
+
+        execCd(oldUserDir.name)
+        assertEquals(oldUserDir, userDir())
+
+        execCd(destination = null, home = oldUserDir.parent)
+        assertEquals(oldUserDir.parent.toAbsolutePath(), userDir())
+    }
+
+    @Test
+    fun ls() {
+        fun ls(destination: String?): List<PipelineAtom> {
+            val args = destination?.let { listOf(it.ca) } ?: emptyList()
+            return listOf(PipelineAtom("ls".toCn(), args))
+        }
+
+        fun transform(it: String): List<String> {
+            return it.split(' ', '\r', '\n', '\t').filter(String::isNotEmpty).sorted()
+        }
+
+        val userDir = Path.of(System.getProperty("user.dir")).toAbsolutePath()
+
+        val currentFiles = Files.list(userDir).map { it.name }.toList().sorted()
+        ls(null).test(
+            stdout = currentFiles,
+            transform = ::transform
+        )
+
+        val parentFiles = Files.list(userDir.parent).map { it.name }.toList().sorted()
+        ls("..").test(
+            stdout = parentFiles,
+            transform = ::transform
+        )
     }
 
     @Test
