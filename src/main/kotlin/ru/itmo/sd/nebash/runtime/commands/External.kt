@@ -20,6 +20,7 @@ class External(private val name: CommandName) : Command {
                 e[name.name] = value.value
             }
             command().addAll(args.map { it.arg })
+            directory(workingDir().toFile())
         }
         val process = withContext(Dispatchers.IO) {
             try {
